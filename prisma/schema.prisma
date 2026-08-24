@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  OPERATEUR
+  CHEF_EQUIPE
+  HSE
+  DIRECTION
+  ADMIN
+}
+
+enum TypeEvenement {
+  SITUATION_DANGEREUSE
+  PRESQUE_ACCIDENT
+  ACCIDENT_SANS_ARRET
+  ACCIDENT_AVEC_ARRET
+  DEVERSEMENT
+  INCENDIE_PRESQU_INCENDIE
+  DEFAILLANCE_EQUIPEMENT
+  COMPORTEMENT_RISQUE
+}
+
+enum StatutWorkflow {
+  DECLARE
+  ANALYSE
+  ACTION_EN_COURS
+  CLOTURE
+}
+
+enum StatutAction {
+  OUVERTE
+  EN_RETARD
+  CLOTUREE
+}
+
+model User {
+  id          String   @id @default(cuid())
+  nom         String
+  email       String   @unique
+  motDePasse  String
+  role        Role
+  atelierId   String?
+  atelier     Atelier? @relation(fields: [atelierId], references: [id])
+  actif       Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  evenements  Evenement[]
+}
+
+model Atelier {
+  id         String      @id @default(cuid())
+  nom        String
+  qrCode     String?     @unique
+  users      User[]
+  evenements Evenement[]
+}
+
+model Evenement {
+  id              String          @id @default(cuid())
+  dateHeure       DateTime
+  atelierId       String
+  atelier         Atelier         @relation(fields: [atelierId], references: [id])
+  type            TypeEvenement
+  description     String
+  risquePotentiel String
+  photoUrl        String?
+  anonyme         Boolean         @default(false)
+  declarantId     String?
+  declarant       User?           @relation(fields: [declarantId], references: [id])
+  statut          StatutWorkflow  @default(DECLARE)
+  createdAt       DateTime        @default(now())
+
+  actions         ActionCorrective[]
+  historique      HistoriqueStatut[]
+}
+
+model ActionCorrective {
+  id            String       @id @default(cuid())
+  evenementId   String
+  evenement     Evenement    @relation(fields: [evenementId], references: [id])
+  description   String
+  responsableId String
+  echeance      DateTime
+  statut        StatutAction @default(OUVERTE)
+  clotureLe     DateTime?
+  createdAt     DateTime     @default(now())
+}
+
+model HistoriqueStatut {
+  id            String    @id @default(cuid())
+  evenementId   String
+  evenement     Evenement @relation(fields: [evenementId], references: [id])
+  ancienStatut  String
+  nouveauStatut String
+  parUserId     String
+  date          DateTime  @default(now())
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  message   String
+  lu        Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
